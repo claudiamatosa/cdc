@@ -9,21 +9,13 @@ const { log } = require('./request')
 const { joiOptions } = require('./options')
 
 const allMethods = ['GET', 'POST', 'PUT', 'DELETE']
-const ignoredHeaders = [
-  'accept',
-  'accept-encoding',
-  'accept-language',
-  'cookie',
-  'cache-control',
-  'connection',
-  'content-length',
-  'host',
-  'upgrade-insecure-requests',
-  'user-agent'
-]
-
 const hasPath = R.pathEq([ 'request', 'path' ])
 const hasMethod = R.pathEq([ 'request', 'method' ])
+
+const hasPayload = payload => R.pipe(
+  R.pathOr({}, ['request', 'body']),
+  R.flip(R.whereEq)(payload || {})
+)
 
 const hasHeaders = headers => R.pipe(
   R.path(['request', 'headers']),
@@ -40,7 +32,8 @@ const hasCorrectSchema = ({ method, payload }) => contract => {
 const requestMatchesContract = req => R.allPass([
   hasPath(req.path),
   hasMethod(R.toUpper(req.method)),
-  hasHeaders(R.omit(ignoredHeaders, req.headers)),
+  hasHeaders(req.headers),
+  hasPayload(req.payload),
   hasCorrectSchema(req)
 ])
 const contractFor = req => R.filter(requestMatchesContract(req))
@@ -81,7 +74,7 @@ const tlsOpts = () => ({
 
 const createServerFor = (contracts, { port = 3000, tls = false, cors = true } = {}) => {
   const server = new hapi.Server()
-  server.connection(Object.assign({ port, routes: { cors: cors } }, tls ? { tls: tlsOpts() } : {}))
+  server.connection(Object.assign({ port, routes: { cors } }, tls ? { tls: tlsOpts() } : {}))
   server.route({
     method: allMethods,
     path: '/{path*}',
