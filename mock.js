@@ -12,6 +12,11 @@ const allMethods = ['GET', 'POST', 'PUT', 'DELETE']
 const hasPath = R.pathEq([ 'request', 'path' ])
 const hasMethod = R.pathEq([ 'request', 'method' ])
 
+const hasQuery = query => contract => {
+  const contractQuery = R.pathOr({}, ['request', 'query'])(contract);
+  return R.equals(contractQuery)(query);
+}
+
 const hasPayload = payload => R.pipe(
   R.pathOr({}, ['request', 'body']),
   R.flip(R.whereEq)(payload || {})
@@ -33,6 +38,7 @@ const requestMatchesContract = req => R.allPass([
   hasPath(req.path),
   hasMethod(R.toUpper(req.method)),
   hasHeaders(req.headers),
+  hasQuery(req.query),
   hasPayload(req.payload),
   hasCorrectSchema(req)
 ])
